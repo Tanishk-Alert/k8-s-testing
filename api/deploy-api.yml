@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: test-dev
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      serviceAccountName: test-dev-access
+      containers:
+        - env:
+            - name: JAVA_OPTS
+              value:
+                -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap
+                -Dconfig.file=conf/application.conf -Dhttp.port=9000 -Djava.awt.headless=true
+                -Dmail.smtp.starttls.enable=true -Dmail.smtp.ssl.protocols=TLSv1.2 -Dlogback.debug=true
+                -Dlog4j.configurationFile=conf/log4j2.xml -Dtest.deafult.hikaricp.connectionTimeout=300000
+            - name: aeEnv
+              value: "dev"
+            - name: appType
+              value: "api"
+            - name: smName
+              value: "dev/test/devops"
+            - name: bucketName
+              value: "dev-test-eu-apps-config"
+          image: 053567382099.dkr.ecr.eu-central-1.amazonaws.com/test-ecr-repo:aetestapi-R11.0M1_test_261224.507.69.T06J8W_423
+          imagePullPolicy: Always
+          name: api
+          ports:
+            - containerPort: 9000
