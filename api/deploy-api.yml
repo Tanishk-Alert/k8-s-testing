@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api
-  namespace: test-dev
+  namespace: db-dev
 spec:
   replicas: 1
   revisionHistoryLimit: 5
@@ -14,7 +14,7 @@ spec:
       labels:
         app: api
     spec:
-      serviceAccountName: test-dev-access
+      serviceAccountName: db-dev-access
       containers:
         - env:
             - name: JAVA_OPTS
@@ -22,17 +22,53 @@ spec:
                 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap
                 -Dconfig.file=conf/application.conf -Dhttp.port=9000 -Djava.awt.headless=true
                 -Dmail.smtp.starttls.enable=true -Dmail.smtp.ssl.protocols=TLSv1.2 -Dlogback.debug=true
-                -Dlog4j.configurationFile=conf/log4j2.xml -Dtest.deafult.hikaricp.connectionTimeout=300000
+                -Dlog4j.configurationFile=conf/log4j2.xml -Ddb.deafult.hikaricp.connectionTimeout=300000
             - name: aeEnv
               value: "dev"
             - name: appType
               value: "api"
             - name: smName
-              value: "dev/test/devops"
+              value: "dev/db/devops"
             - name: bucketName
-              value: "dev-test-eu-apps-config"
-          image: 053567382099.dkr.ecr.eu-central-1.amazonaws.com/test-ecr-repo:aetestapi-R11.0M1_test_261224.507.69.T06J8W_423
+              value: "dev-db-eu-apps-config"
+          image: 053567382099.dkr.ecr.eu-central-1.amazonaws.com/db-ecr-repo:aedbapi-R11.0M1_DB_261224.507.69.T06J8W_423
           imagePullPolicy: Always
           name: api
           ports:
             - containerPort: 9000
+          resources:
+            limits:
+              memory: 8G
+              cpu: "2"
+          startupProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 4
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 60
+            timeoutSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/conf/override_env.conf
+              subPath: override_env.conf
+            - name: sso-volume
+              mountPath: /app/conf/sso.conf
+              subPath: sso.conf
+      volumes:
+        - name: config-volume
+          configMap:
+            name: ae-api-cm
+        - name: sso-volume
+          configMap:
+            name: ae-sso-cm
